@@ -1,0 +1,28 @@
+{% extends "fefu_lab/base.html" %}
+
+{% block title %}Обратная связь{% endblock %}
+{% block heading %}Обратная связь{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <form method="post">
+        {% csrf_token %}
+        
+        {% for field in form %}
+            <div class="form-group">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.errors %}
+                    <div class="error">
+                        {% for error in field.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        
+        <button type="submit" class="btn">Отправить сообщение</button>
+    </form>
+</div>
+{% endblock %}
