@@ -1,108 +1,96 @@
 from django.shortcuts import render
-from django.http import HttpResponse
 from django.http import Http404
 from django.views.generic import View
+from .forms import FeedbackForm, RegistrationForm
+from .models import UserProfile
+
+# ДАННЫЕ ДЛЯ ДЕМОНСТРАЦИИ (временно вместо БД)
+STUDENTS_DATA = {
+    1: {'info': 'Иван Петров', 'faculty': 'Кибербезопасность', 'status': 'Активный', 'year': 3},
+    2: {'info': 'Мария Сидорова', 'faculty': 'Информатика', 'status': 'Активный', 'year': 2},
+    3: {'info': 'Алексей Козлов', 'faculty': 'Программная инженерия', 'status': 'Выпускник', 'year': 5}
+}
+
+COURSES_DATA = {
+    'python-basics': {
+        'name': 'Основы программирования на Python',
+        'duration': 36,
+        'description': 'Базовый курс по программированию на языке Python для начинающих.',
+        'instructor': 'Доцент Петров И.С.',
+        'level': 'Начальный'
+    }
+}
+
+# СУЩЕСТВУЮЩИЕ ПРЕДСТАВЛЕНИЯ (ОБНОВЛЕННЫЕ)
+def home_page(request):
+    return render(request, 'fefu_lab/home.html')
+
+def about_page(request):
+    return render(request, 'fefu_lab/about.html')
+
+def student_profile(request, student_id):
+    if student_id in STUDENTS_DATA:
+        student_data = STUDENTS_DATA[student_id]
+        return render(request, 'fefu_lab/student_profile.html', {
+            'student_id': student_id,
+            'student_info': student_data['info'],
+            'faculty': student_data['faculty'],
+            'status': student_data['status'],
+            'year': student_data['year']
+        })
+    else:
+        raise Http404("Студент с таким ID не найден")
 
 class CourseDetailView(View):
     def get(self, request, course_slug):
-        courses_data = {
-            'python-basic': {
-                'title': 'Python Basic', 
-                'description': 'Базовый курс программирования на Python'
-            },
-            'django-advanced': {
-                'title': 'Django Advanced', 
-                'description': 'Продвинутый курс веб-разработки на Django'
-            }
-        }
-        
-        course = courses_data.get(course_slug)
-        if not course:
-            raise Http404("Курс не найден.")
-        
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>{course['title']}</title>
-        </head>
-        <body>
-            <h1>Информация о курсе</h1>
-            <p><strong>Slug:</strong> {course_slug}</p>
-            <p><strong>Название:</strong> {course['title']}</p>
-            <p><strong>Описание:</strong> {course['description']}</p>
-            <a href="/">Вернуться на главную</a>
-        </body>
-        </html>
-        """
-        return HttpResponse(html)
-def home_page(request):
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Главная страница</title>
-    </head>
-    <body>
-        <h1>Добро пожаловать на главную страницу!</h1>
-        <p>Это главная страница нашего сайта.</p>
-        <ul>
-            <li><a href="/about/">О нас</a></li>
-            <li><a href="/student/1/">Профиль студента 1</a></li>
-            <li><a href="/student/2/">Профиль студента 2</a></li>
-            <li><a href="/course/python-basic/">Курс Python Basic</a></li>
-            <li><a href="/course/django-advanced/">Курс Django Advanced</a></li>
-        </ul>
-    </body>
-    </html>
-    """
-    return HttpResponse(html)
+        if course_slug in COURSES_DATA:
+            course_data = COURSES_DATA[course_slug]
+            return render(request, 'fefu_lab/course_detail.html', {
+                'course_name': course_data['name'],
+                'duration': course_data['duration'],
+                'description': course_data['description'],
+                'instructor': course_data['instructor'],
+                'level': course_data['level']
+            })
+        else:
+            raise Http404("Курс не найден")
 
-def about_page(request):
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>О нас</title>
-    </head>
-    <body>
-        <h1>О нас</h1>
-        <p>Это страница о нашем проекте и команде.</p>
-        <p>Мы изучаем Django и веб-разработку!</p>
-        <a href="/">Вернуться на главную</a>
-    </body>
-    </html>
-    """
-    return HttpResponse(html)
-def student_profile(request, student_id):
-    if student_id > 100:
-        raise Http404("Студент с таким ID не найден.")
+# НОВЫЕ ПРЕДСТАВЛЕНИЯ ДЛЯ ФОРМ
+def feedback_view(request):
+    if request.method == 'POST':
+        form = FeedbackForm(request.POST)
+        if form.is_valid():
+            return render(request, 'fefu_lab/success.html', {
+                'message': 'Ваше сообщение успешно отправлено!',
+                'title': 'Обратная связь'
+            })
+    else:
+        form = FeedbackForm()
     
-    students_data = {
-        1: {"name": "Иван Иванов", "group": "БПМ-21-1"},
-        2: {"name": "Мария Петрова", "group": "БПМ-21-2"},
-        3: {"name": "Алексей Сидоров", "group": "БПМ-21-1"}
-    }
-    
-    student = students_data.get(student_id)
-    if not student:
-        raise Http404("Студент с таким ID не найден.")
-    
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Профиль студента</title>
-    </head>
-    <body>
-        <h1>Профиль студента</h1>
-        <p><strong>ID:</strong> {student_id}</p>
-        <p><strong>Имя:</strong> {student['name']}</p>
-        <p><strong>Группа:</strong> {student['group']}</p>
-        <a href="/">Вернуться на главную</a>
-    </body>
-    </html>
-    """
-    return HttpResponse(html)
+    return render(request, 'fefu_lab/feedback.html', {
+        'form': form,
+        'title': 'Обратная связь'
+    })
 
-# Create your views here.
+def register_view(request):
+    if request.method == 'POST':
+        form = RegistrationForm(request.POST)
+        if form.is_valid():
+            user = UserProfile(
+                username=form.cleaned_data['username'],
+                email=form.cleaned_data['email'],
+                password=form.cleaned_data['password']
+            )
+            user.save()
+            
+            return render(request, 'fefu_lab/success.html', {
+                'message': f'Пользователь {user.username} успешно зарегистрирован!',
+                'title': 'Регистрация'
+            })
+    else:
+        form = RegistrationForm()
+    
+    return render(request, 'fefu_lab/register.html', {
+        'form': form,
+        'title': 'Регистрация'
+    })
