@@ -1,0 +1,39 @@
+{% extends "fefu_lab/base.html" %}
+
+{% block title %}О нас{% endblock %}
+{% block heading %}О нашем проекте{% endblock %}
+
+{% block content %}
+<div class="content">
+    <h2>Добро пожаловать в учебный проект!</h2>
+    
+    <p>Этот проект создан в рамках изучения веб-фреймворка Django и демонстрирует:</p>
+    
+    <div class="features">
+        <h3>Основные возможности:</h3>
+        <ul>
+            <li> Система маршрутизации URL</li>
+            <li> Шаблонизация с наследованием</li>
+            <li> Работа со статическими файлами</li>
+            <li> Валидация форм на стороне сервера</li>
+            <li> Защита от CSRF атак</li>
+            <li> Работа с базой данных</li>
+        </ul>
+    </div>
+    
+    <div class="tech-stack">
+        <h3>Используемые технологии:</h3>
+        <ul>
+            <li><strong>Backend:</strong> Django 5.2</li>
+            <li><strong>Frontend:</strong> HTML5, CSS3</li>
+            <li><strong>База данных:</strong> SQLite</li>
+            <li><strong>Язык программирования:</strong> Python 3.11</li>
+        </ul>
+    </div>
+    
+    <div class="contact-info">
+        <h3>Контакты:</h3>
+        <p>Если у вас есть вопросы или предложения, воспользуйтесь формой <a href="/feedback/">обратной связи</a>.</p>
+    </div>
+</div>
+{% endblock %}
