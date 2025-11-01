@@ -115,4 +115,80 @@ class Student(models.Model):
 
     def get_faculty_display_name(self):
         return dict(self.FACULTY_CHOICES).get(self.faculty, 'Неизвестно')
+class Course(models.Model):
+    LEVEL_CHOICES = [
+        ('BEGINNER', 'Начальный'),
+        ('INTERMEDIATE', 'Средний'),
+        ('ADVANCED', 'Продвинутый'),
+    ]
+    
+    title = models.CharField(
+        max_length=200,
+        verbose_name='Название курса'
+    )
+    slug = models.SlugField(
+        max_length=200,
+        unique=True,
+        verbose_name='URL-идентификатор'
+    )
+    description = models.TextField(
+        verbose_name='Описание курса'
+    )
+    duration = models.PositiveIntegerField(
+        verbose_name='Продолжительность (часов)'
+    )
+    instructor = models.ForeignKey(
+        Instructor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='courses',
+        verbose_name='Преподаватель'
+    )
+    level = models.CharField(
+        max_length=12,
+        choices=LEVEL_CHOICES,
+        default='BEGINNER',
+        verbose_name='Уровень сложности'
+    )
+    max_students = models.PositiveIntegerField(
+        default=30,
+        verbose_name='Максимум студентов'
+    )
+    price = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        verbose_name='Стоимость'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Активен'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Дата создания'
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Дата обновления'
+    )
+
+    class Meta:
+        verbose_name = 'Курс'
+        verbose_name_plural = 'Курсы'
+        ordering = ['-created_at']
+        db_table = 'courses'
+
+    def __str__(self):
+        return self.title
+
+    def get_absolute_url(self):
+        return reverse('course_detail', kwargs={'slug': self.slug})
+
+    def enrolled_students_count(self):
+        return self.enrollments.filter(status='ACTIVE').count()
+
+    def available_slots(self):
+        return self.max_students - self.enrolled_students_count()
 # Create your models here.
