@@ -191,4 +191,66 @@ class Course(models.Model):
 
     def available_slots(self):
         return self.max_students - self.enrolled_students_count()
+class Enrollment(models.Model):
+    STATUS_CHOICES = [
+        ('ACTIVE', 'Активна'),
+        ('COMPLETED', 'Завершена'),
+        ('CANCELLED', 'Отменена'),
+    ]
+    
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='enrollments',
+        verbose_name='Студент'
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='enrollments',
+        verbose_name='Курс'
+    )
+    enrolled_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Дата записи'
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='ACTIVE',
+        verbose_name='Статус'
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Дата завершения'
+    )
+
+    class Meta:
+        verbose_name = 'Запись на курс'
+        verbose_name_plural = 'Записи на курсы'
+        unique_together = ['student', 'course']
+        ordering = ['-enrolled_at']
+        db_table = 'enrollments'
+
+    def __str__(self):
+        return f"{self.student} - {self.course}"
+
+    def clean(self):
+        if self.student and self.course:
+            # Проверяем что студент не записан дважды на один курс
+            existing = Enrollment.objects.filter(
+                student=self.student, 
+                course=self.course
+            ).exclude(pk=self.pk)
+            if existing.exists():
+                raise ValidationError('Студент уже записан на этот курс')
+        
+        # Проверяем что курс активен
+        if self.course and not self.course.is_active:
+            raise ValidationError('Нельзя записаться на неактивный курс')
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 # Create your models here.
