@@ -1,89 +1,53 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import Http404
-from django.views.generic import View
+from django.views.generic import View, ListView, DetailView
+from .models import Student, Course, Instructor, Enrollment
 from .forms import FeedbackForm, RegistrationForm
-from .models import UserProfile
-
-# ДАННЫЕ ДЛЯ ДЕМОНСТРАЦИИ (временно вместо БД)
-STUDENTS_DATA = {
-    1: {
-        'info': 'Иван Петров',
-        'faculty': 'Кибербезопасность',
-        'status': 'Активный',
-        'year': 3
-    },
-    2: {
-        'info': 'Мария Сидорова', 
-        'faculty': 'Информатика',
-        'status': 'Активный',
-        'year': 2
-    },
-    3: {
-        'info': 'Алексей Козлов',
-        'faculty': 'Программная инженерия', 
-        'status': 'Выпускник',
-        'year': 5
-    }
-}
-
-COURSES_DATA = {
-    'python-basics': {
-        'name': 'Основы программирования на Python',
-        'duration': 36,
-        'description': 'Базовый курс по программированию на языке Python для начинающих.',
-        'instructor': 'Доцент Петров И.С.',
-        'level': 'Начальный'
-    },
-    'web-security': {
-        'name': 'Веб-безопасность',
-        'duration': 48,
-        'description': 'Курс по защите веб-приложений от современных угроз.',
-        'instructor': 'Профессор Сидоров А.В.',
-        'level': 'Продвинутый'
-    },
-    'network-defense': {
-        'name': 'Защита сетей',
-        'duration': 42,
-        'description': 'Изучение методов и технологий защиты компьютерных сетей.',
-        'instructor': 'Доцент Козлова М.П.',
-        'level': 'Средний'
-    }
-}
 
 
 # СУЩЕСТВУЮЩИЕ ПРЕДСТАВЛЕНИЯ (ОБНОВЛЕННЫЕ)
 def home_page(request):
-    return render(request, 'fefu_lab/home.html')
+    # Получаем реальные данные из БД
+    total_students = Student.objects.filter(is_active=True).count()
+    total_courses = Course.objects.filter(is_active=True).count()
+    total_instructors = Instructor.objects.filter(is_active=True).count()
+    recent_courses = Course.objects.filter(is_active=True).select_related('instructor').order_by('-created_at')[:3]
+    
+    return render(request, 'fefu_lab/home.html', {
+        'title': 'Главная страница',
+        'total_students': total_students,
+        'total_courses': total_courses,
+        'total_instructors': total_instructors,
+        'recent_courses': recent_courses
+    })
+
 
 def about_page(request):
     return render(request, 'fefu_lab/about.html')
 
-def student_profile(request, student_id):
-    if student_id in STUDENTS_DATA:
-        student_data = STUDENTS_DATA[student_id]
-        return render(request, 'fefu_lab/student_profile.html', {
-            'student_id': student_id,
-            'student_info': student_data['info'],
-            'faculty': student_data['faculty'],
-            'status': student_data['status'],
-            'year': student_data['year']
-        })
-    else:
-        raise Http404("Студент с таким ID не найден")
-
-class CourseDetailView(View):
-    def get(self, request, course_slug):
-        if course_slug in COURSES_DATA:
-            course_data = COURSES_DATA[course_slug]
-            return render(request, 'fefu_lab/course_detail.html', {
-                'course_name': course_data['name'],
-                'duration': course_data['duration'],
-                'description': course_data['description'],
-                'instructor': course_data['instructor'],
-                'level': course_data['level']
-            })
-        else:
-            raise Http404("Курс не найден")
+class StudentDetailView(DetailView):
+    model = Student
+    template_name = 'fefu_lab/student_profile.html'
+    context_object_name = 'student'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Добавляем связанные записи на курсы
+        context['enrollments'] = self.object.enrollments.select_related('course').filter(status='ACTIVE')
+        return context
+    
+class CourseDetailView(DetailView):
+    model = Course
+    template_name = 'fefu_lab/course_detail.html'
+    context_object_name = 'course'
+    slug_field = 'slug'
+    slug_url_kwarg = 'course_slug'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Добавляем список студентов записанных на курс
+        context['enrollments'] = self.object.enrollments.select_related('student').filter(status='ACTIVE')
+        return context
 
 # НОВЫЕ ПРЕДСТАВЛЕНИЯ ДЛЯ ФОРМ
 def feedback_view(request):
@@ -124,3 +88,21 @@ def register_view(request):
         'form': form,
         'title': 'Регистрация'
     })
+# Добавляем новые представления для списков
+class StudentListView(ListView):
+    model = Student
+    template_name = 'fefu_lab/student_list.html'
+    context_object_name = 'students'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        return Student.objects.filter(is_active=True).select_related()
+
+class CourseListView(ListView):
+    model = Course
+    template_name = 'fefu_lab/course_list.html'
+    context_object_name = 'courses'
+    paginate_by = 9
+    
+    def get_queryset(self):
+        return Course.objects.filter(is_active=True).select_related('instructor')
