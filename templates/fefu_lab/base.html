@@ -12,11 +12,11 @@
         <!-- НАВИГАЦИОННОЕ МЕНЮ -->
         <nav class="navigation">
             <a href="/">Главная</a> | 
-            <a href="/about/">О нас</a> | 
-            <a href="/feedback/">Обратная связь</a> | 
-            <a href="/register/">Регистрация</a> |
-            <a href="/student/1/">Пример студента</a> |
-            <a href="/course/python-basics/">Курс Python</a>
+            <a href="{% url 'student_list' %}">Студенты</a> | 
+            <a href="{% url 'course_list' %}">Курсы</a> | 
+            <a href="/about/">О нас</a> |
+            <a href="/feedback/">Обратная связь</a> |
+            <a href="/register/">Регистрация</a>
         </nav>
         
         <!-- ЗАГОЛОВОК СТРАНИЦЫ -->

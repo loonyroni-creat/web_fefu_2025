@@ -1,11 +1,82 @@
 {% extends "fefu_lab/base.html" %}
 
 {% block title %}Главная страница{% endblock %}
-{% block heading %}Добро пожаловать на главную страницу!{% endblock %}
+{% block heading %}Добро пожаловать в университет!{% endblock %}
 
 {% block content %}
-<div class="content">
-    <p>Это учебный проект по веб-разработке на Django.</p>
-    <p>Используйте навигационное меню для перехода между страницами.</p>
+<div class="text-center mb-20">
+    <p>Это главная страница нашего сайта. Здесь вы можете узнать о нашем университете, оставить обратную связь или зарегистрироваться.</p>
+</div>
+
+<div class="info-grid mb-20">
+    <div class="info-item text-center">
+        <h3>{{ total_students }}+</h3>
+        <p>Активных студентов</p>
+    </div>
+    <div class="info-item text-center">
+        <h3>{{ total_courses }}+</h3>
+        <p>Доступных курсов</p>
+    </div>
+    <div class="info-item text-center">
+        <h3>{{ total_instructors }}+</h3>
+        <p>Преподавателей</p>
+    </div>
+</div>
+
+<div class="quick-links mt-20">
+    <a href="{% url 'student_list' %}" class="quick-link">
+        <h3>Студенты</h3>
+        <p>Посмотреть список студентов</p>
+    </a>
+    <a href="{% url 'course_list' %}" class="quick-link">
+        <h3>Курсы</h3>
+        <p>Выбрать курс для обучения</p>
+    </a>
+    <a href="/feedback/" class="quick-link">
+        <h3>Обратная связь</h3>
+        <p>Оставьте ваше сообщение</p>
+    </a>
+    <a href="/register/" class="quick-link">
+        <h3>Регистрация</h3>
+        <p>Стать студентом</p>
+    </a>
+</div>
+
+{% if recent_courses %}
+<div class="mt-20">
+    <h2>Новые курсы</h2>
+    <div class="info-grid">
+        {% for course in recent_courses %}
+            <div class="info-item">
+                <h3>{{ course.title }}</h3>
+                <p><strong>Преподаватель:</strong> 
+                    {% if course.instructor %}
+                        {{ course.instructor.full_name }}
+                    {% else %}
+                        Не назначен
+                    {% endif %}
+                </p>
+                <p><strong>Продолжительность:</strong> {{ course.duration }} часов</p>
+                <p><strong>Уровень:</strong> {{ course.get_level_display }}</p>
+                <a href="{% url 'course_detail' course.slug %}" class="btn" style="margin-top: 10px;">Подробнее</a>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="about-features mt-20">
+    <div class="feature-card">
+        <h3>Качественное образование</h3>
+        <p>Современные программы обучения и опытные преподаватели</p>
+    </div>
+    <div class="feature-card">
+        <h3>Кибербезопасность</h3>
+        <p>Специализация в области защиты информации и сетей</p>
+    </div>
+    <div class="feature-card">
+        <h3>Карьера</h3>
+        <p>Партнерства с ведущими IT-компаниями и трудоустройство</p>
+    </div>
 </div>
 {% endblock %}

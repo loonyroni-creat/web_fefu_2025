@@ -1,0 +1,48 @@
+{% extends "fefu_lab/base.html" %}
+
+{% block title %}Список курсов{% endblock %}
+{% block heading %}Доступные курсы{% endblock %}
+
+{% block content %}
+<div class="course-grid">
+    {% for course in courses %}
+    <div class="course-card">
+        <h3>{{ course.title }}</h3>
+        <p><strong>Преподаватель:</strong> 
+            {% if course.instructor %}
+                {{ course.instructor.full_name }}
+            {% else %}
+                Не назначен
+            {% endif %}
+        </p>
+        <p><strong>Продолжительность:</strong> {{ course.duration }} часов</p>
+        <p><strong>Уровень:</strong> {{ course.get_level_display }}</p>
+        <p><strong>Стоимость:</strong> 
+            {% if course.price > 0 %}
+                {{ course.price }} руб.
+            {% else %}
+                Бесплатно
+            {% endif %}
+        </p>
+        <p><strong>Записано студентов:</strong> {{ course.enrolled_students_count }}/{{ course.max_students }}</p>
+        <a href="{% url 'course_detail' course.slug %}" class="btn">Подробнее</a>
+    </div>
+    {% empty %}
+    <p>Нет доступных курсов.</p>
+    {% endfor %}
+</div>
+
+{% if is_paginated %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}">← Назад</a>
+    {% endif %}
+    
+    <span>Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+    
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}">Вперед →</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
