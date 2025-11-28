@@ -1,6 +1,9 @@
 from django.db import models
 from django.urls import reverse
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class UserProfile(models.Model):
     username = models.CharField(max_length=50, unique=True, verbose_name='Логин')
@@ -53,6 +56,12 @@ class Instructor(models.Model):
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
 class Student(models.Model):
+    ROLE_CHOICES = [
+        ('STUDENT', 'Студент'),
+        ('TEACHER', 'Преподаватель'), 
+        ('ADMIN', 'Администратор'),
+    ]
+    
     FACULTY_CHOICES = [
         ('CS', 'Кибербезопасность'),
         ('SE', 'Программная инженерия'),
@@ -61,28 +70,46 @@ class Student(models.Model):
         ('WEB', 'Веб-технологии'),
     ]
     
-    first_name = models.CharField(
-        max_length=100,
-        verbose_name='Имя'
+    # Связь с пользователем Django
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='student_profile',
+        verbose_name='Пользователь'
     )
-    last_name = models.CharField(
-        max_length=100,
-        verbose_name='Фамилия'
-    )
-    email = models.EmailField(
-        unique=True,
-        verbose_name='Email'
-    )
-    birth_date = models.DateField(
-        null=True,
+    
+    # Дополнительные поля
+    phone = models.CharField(
+        max_length=20,
         blank=True,
-        verbose_name='Дата рождения'
+        verbose_name='Телефон'
+    )
+    avatar = models.ImageField(
+        upload_to='avatars/',
+        blank=True,
+        null=True, 
+        verbose_name='Аватар'
+    )
+    bio = models.TextField(
+        blank=True,
+        verbose_name='О себе'
+    )
+    role = models.CharField(
+        max_length=10,
+        choices=ROLE_CHOICES,
+        default='STUDENT',
+        verbose_name='Роль'
     )
     faculty = models.CharField(
         max_length=3,
         choices=FACULTY_CHOICES,
         default='CS',
         verbose_name='Факультет'
+    )
+    birth_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Дата рождения'
     )
     is_active = models.BooleanField(
         default=True,
@@ -96,25 +123,31 @@ class Student(models.Model):
         auto_now=True,
         verbose_name='Дата обновления'
     )
-
+    
     class Meta:
-        verbose_name = 'Студент'
-        verbose_name_plural = 'Студенты'
-        ordering = ['last_name', 'first_name']
-        db_table = 'students'
-
+        verbose_name = 'Профиль студента'
+        verbose_name_plural = 'Профили студентов'
+        ordering = ['user__last_name', 'user__first_name']
+    
     def __str__(self):
-        return f"{self.last_name} {self.first_name}"
-
-    def get_absolute_url(self):
-        return reverse('student_detail', kwargs={'pk': self.pk})
-
+        return f"{self.user.last_name} {self.user.first_name}"
+    
     @property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}"
-
+        return f"{self.user.first_name} {self.user.last_name}"
+    
+    @property
+    def email(self):
+        return self.user.email
+    
     def get_faculty_display_name(self):
         return dict(self.FACULTY_CHOICES).get(self.faculty, 'Неизвестно')
+    
+    def is_teacher(self):
+        return self.role == 'TEACHER'
+    
+    def is_admin(self):
+        return self.role == 'ADMIN'
 class Course(models.Model):
     LEVEL_CHOICES = [
         ('BEGINNER', 'Начальный'),
