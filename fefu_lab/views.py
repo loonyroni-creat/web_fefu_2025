@@ -1,14 +1,14 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import Http404
-from django.views.generic import View, ListView, DetailView
-from .models import Student, Course, Instructor, Enrollment
-from .forms import FeedbackForm, RegistrationForm
+from django.views.generic import View, DetailView, ListView  # Добавлен ListView
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.models import User  # Добавлен импорт User
 from django.contrib import messages
 from django.shortcuts import redirect
-from .forms import UserRegistrationForm, UserLoginForm, UserProfileForm, StudentProfileForm
+
+from .models import Student, Course, Instructor, Enrollment
+from .forms import FeedbackForm, RegistrationForm, UserRegistrationForm, UserLoginForm, UserProfileForm, StudentProfileForm
 
 # СУЩЕСТВУЮЩИЕ ПРЕДСТАВЛЕНИЯ (ОБНОВЛЕННЫЕ)
 def home_page(request):
@@ -26,9 +26,10 @@ def home_page(request):
         'recent_courses': recent_courses
     })
 
-
 def about_page(request):
-    return render(request, 'fefu_lab/about.html')
+    return render(request, 'fefu_lab/about.html', {
+        'title': 'О нас'
+    })
 
 class StudentDetailView(DetailView):
     model = Student
@@ -37,8 +38,11 @@ class StudentDetailView(DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Добавляем связанные записи на курсы
-        context['enrollments'] = self.object.enrollments.select_related('course').filter(status='ACTIVE')
+        # Исправлено: правильное обращение к enrollments
+        context['enrollments'] = Enrollment.objects.filter(
+            student=self.object, 
+            status='ACTIVE'
+        ).select_related('course')
         return context
     
 class CourseDetailView(DetailView):
@@ -51,7 +55,10 @@ class CourseDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Добавляем список студентов записанных на курс
-        context['enrollments'] = self.object.enrollments.select_related('student').filter(status='ACTIVE')
+        context['enrollments'] = Enrollment.objects.filter(
+            course=self.object, 
+            status='ACTIVE'
+        ).select_related('student')
         return context
 
 # НОВЫЕ ПРЕДСТАВЛЕНИЯ ДЛЯ ФОРМ
@@ -71,19 +78,13 @@ def feedback_view(request):
         'title': 'Обратная связь'
     })
 
-def register_view(request):
+def old_register_view(request):  # Переименована, чтобы избежать конфликта
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
         if form.is_valid():
-            user = UserProfile(
-                username=form.cleaned_data['username'],
-                email=form.cleaned_data['email'],
-                password=form.cleaned_data['password']
-            )
-            user.save()
-            
+            # Временная заглушка - нужно определить модель UserProfile
             return render(request, 'fefu_lab/success.html', {
-                'message': f'Пользователь {user.username} успешно зарегистрирован!',
+                'message': f'Пользователь успешно зарегистрирован!',
                 'title': 'Регистрация'
             })
     else:
@@ -93,6 +94,7 @@ def register_view(request):
         'form': form,
         'title': 'Регистрация'
     })
+
 # Добавляем новые представления для списков
 class StudentListView(ListView):
     model = Student
@@ -101,7 +103,7 @@ class StudentListView(ListView):
     paginate_by = 10
     
     def get_queryset(self):
-        return Student.objects.filter(is_active=True).select_related()
+        return Student.objects.filter(is_active=True).select_related('user')
 
 class CourseListView(ListView):
     model = Course
@@ -148,6 +150,12 @@ def admin_required(function=None):
     if function:
         return actual_decorator(function)
     return actual_decorator
+
+# УДАЛИТЬ ДУБЛИРУЮЩИЕСЯ ФУНКЦИИ (они уже есть выше):
+# - student_list (дублирует StudentListView)
+# - course_list (дублирует CourseListView) 
+# - about_page (уже есть выше)
+# - feedback_view (уже есть выше)
 
 # Представления аутентификации
 def register_view(request):
@@ -239,7 +247,7 @@ def student_dashboard(request):
     Личный кабинет студента
     """
     student = request.user.student_profile
-    enrollments = student.user.enrollments.select_related('course').filter(status='ACTIVE')
+    enrollments = Enrollment.objects.filter(student=student, status='ACTIVE').select_related('course')
     
     return render(request, 'fefu_lab/dashboard/student_dashboard.html', {
         'student': student,
@@ -259,11 +267,11 @@ def teacher_dashboard(request):
     # Статистика по курсам
     course_stats = []
     for course in courses:
-        enrollments_count = course.enrollments.filter(status='ACTIVE').count()
+        enrollments_count = Enrollment.objects.filter(course=course, status='ACTIVE').count()
         course_stats.append({
             'course': course,
             'students_count': enrollments_count,
-            'available_seats': course.available_seats()
+            'available_seats': course.capacity - enrollments_count if hasattr(course, 'capacity') else 0
         })
     
     return render(request, 'fefu_lab/dashboard/teacher_dashboard.html', {
