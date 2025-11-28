@@ -1,35 +1,46 @@
-{% extends "fefu_lab/base.html" %}
+{% extends 'fefu_lab/base.html' %}
 
-{% block title %}Список студентов{% endblock %}
-{% block heading %}Наши студенты{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="student-grid">
     {% for student in students %}
     <div class="student-card">
-        <h3>{{ student.full_name }}</h3>
+        <h3>
+            <!-- ИСПРАВЛЕННАЯ СТРОКА -->
+            <a href="{% url 'student_profile' student.pk %}">
+                {{ student.full_name }}
+            </a>
+        </h3>
         <p><strong>Факультет:</strong> {{ student.get_faculty_display_name }}</p>
         <p><strong>Email:</strong> {{ student.email }}</p>
         {% if student.birth_date %}
-        <p><strong>Дата рождения:</strong> {{ student.birth_date }}</p>
+            <p><strong>Дата рождения:</strong> {{ student.birth_date }}</p>
         {% endif %}
-        <a href="{% url 'student_detail' student.pk %}" class="btn">Подробнее</a>
+        <p><strong>Роль:</strong> {{ student.get_role_display }}</p>
+        
+        {% if student.enrollments.count > 0 %}
+            <p><strong>Курсы:</strong> {{ student.enrollments.count }}</p>
+        {% endif %}
     </div>
     {% empty %}
-    <p>Нет активных студентов.</p>
+    <div class="no-students">
+        <p>Студенты не найдены.</p>
+    </div>
     {% endfor %}
 </div>
 
+<!-- Добавьте пагинацию если используете ListView -->
 {% if is_paginated %}
 <div class="pagination">
     {% if page_obj.has_previous %}
-    <a href="?page={{ page_obj.previous_page_number }}">← Назад</a>
+        <a href="?page={{ page_obj.previous_page_number }}">Предыдущая</a>
     {% endif %}
     
     <span>Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
     
     {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}">Вперед →</a>
+        <a href="?page={{ page_obj.next_page_number }}">Следующая</a>
     {% endif %}
 </div>
 {% endif %}

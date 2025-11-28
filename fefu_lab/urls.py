@@ -7,9 +7,9 @@ urlpatterns = [
     # Основные страницы
     path('', views.home_page, name='home'),
     path('about/', views.about_page, name='about'),
-    path('students/', views.StudentListView.as_view(), name='student_list'),  # Исправлено на класс
-    path('student/<int:pk>/', views.StudentDetailView.as_view(), name='student_profile'),  # Исправлено на класс
-    path('courses/', views.CourseListView.as_view(), name='course_list'),  # Исправлено на класс
+    path('students/', views.StudentListView.as_view(), name='student_list'),
+    path('student/<int:pk>/', views.StudentDetailView.as_view(), name='student_profile'),  # Это правильное имя!
+    path('courses/', views.CourseListView.as_view(), name='course_list'),
     path('course/<slug:course_slug>/', views.CourseDetailView.as_view(), name='course_detail'),
     path('feedback/', views.feedback_view, name='feedback'),
     
@@ -26,6 +26,5 @@ urlpatterns = [
     path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
 ]
 
-# Добавляем маршруты для медиа-файлов в режиме разработки
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

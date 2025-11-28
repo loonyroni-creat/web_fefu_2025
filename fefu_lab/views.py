@@ -1,9 +1,9 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import Http404
-from django.views.generic import View, DetailView, ListView  # Добавлен ListView
+from django.views.generic import View, DetailView, ListView
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.models import User  # Добавлен импорт User
+from django.contrib.auth.models import User
 from django.contrib import messages
 from django.shortcuts import redirect
 
@@ -12,7 +12,6 @@ from .forms import FeedbackForm, RegistrationForm, UserRegistrationForm, UserLog
 
 # СУЩЕСТВУЮЩИЕ ПРЕДСТАВЛЕНИЯ (ОБНОВЛЕННЫЕ)
 def home_page(request):
-    # Получаем реальные данные из БД
     total_students = Student.objects.filter(is_active=True).count()
     total_courses = Course.objects.filter(is_active=True).count()
     total_instructors = Instructor.objects.filter(is_active=True).count()
@@ -38,7 +37,6 @@ class StudentDetailView(DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Исправлено: правильное обращение к enrollments
         context['enrollments'] = Enrollment.objects.filter(
             student=self.object, 
             status='ACTIVE'
@@ -54,14 +52,12 @@ class CourseDetailView(DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Добавляем список студентов записанных на курс
         context['enrollments'] = Enrollment.objects.filter(
             course=self.object, 
             status='ACTIVE'
         ).select_related('student')
         return context
 
-# НОВЫЕ ПРЕДСТАВЛЕНИЯ ДЛЯ ФОРМ
 def feedback_view(request):
     if request.method == 'POST':
         form = FeedbackForm(request.POST)
@@ -78,11 +74,10 @@ def feedback_view(request):
         'title': 'Обратная связь'
     })
 
-def old_register_view(request):  # Переименована, чтобы избежать конфликта
+def old_register_view(request):
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
         if form.is_valid():
-            # Временная заглушка - нужно определить модель UserProfile
             return render(request, 'fefu_lab/success.html', {
                 'message': f'Пользователь успешно зарегистрирован!',
                 'title': 'Регистрация'
@@ -95,7 +90,6 @@ def old_register_view(request):  # Переименована, чтобы изб
         'title': 'Регистрация'
     })
 
-# Добавляем новые представления для списков
 class StudentListView(ListView):
     model = Student
     template_name = 'fefu_lab/student_list.html'
@@ -116,9 +110,6 @@ class CourseListView(ListView):
 
 # Декораторы для проверки ролей
 def student_required(function=None):
-    """
-    Декоратор для проверки что пользователь - студент
-    """
     actual_decorator = user_passes_test(
         lambda u: hasattr(u, 'student_profile') and u.student_profile.role in ['STUDENT', 'ADMIN'],
         login_url='/login/'
@@ -128,9 +119,6 @@ def student_required(function=None):
     return actual_decorator
 
 def teacher_required(function=None):
-    """
-    Декоратор для проверки что пользователь - преподаватель
-    """
     actual_decorator = user_passes_test(
         lambda u: hasattr(u, 'student_profile') and u.student_profile.role in ['TEACHER', 'ADMIN'],
         login_url='/login/'
@@ -140,9 +128,6 @@ def teacher_required(function=None):
     return actual_decorator
 
 def admin_required(function=None):
-    """
-    Декоратор для проверки что пользователь - администратор
-    """
     actual_decorator = user_passes_test(
         lambda u: hasattr(u, 'student_profile') and u.student_profile.role == 'ADMIN',
         login_url='/login/'
@@ -151,24 +136,27 @@ def admin_required(function=None):
         return actual_decorator(function)
     return actual_decorator
 
-# УДАЛИТЬ ДУБЛИРУЮЩИЕСЯ ФУНКЦИИ (они уже есть выше):
-# - student_list (дублирует StudentListView)
-# - course_list (дублирует CourseListView) 
-# - about_page (уже есть выше)
-# - feedback_view (уже есть выше)
-
-# Представления аутентификации
 def register_view(request):
-    """
-    Регистрация нового пользователя
-    """
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
-            messages.success(request, 'Регистрация прошла успешно! Добро пожаловать!')
-            return redirect('profile')
+            
+            authenticated_user = authenticate(
+                request,
+                username=form.cleaned_data['username'],
+                password=form.cleaned_data['password1']
+            )
+            
+            if authenticated_user is not None:
+                login(request, authenticated_user)
+                messages.success(request, f'Регистрация прошла успешно! Добро пожаловать, {user.first_name}!')
+                return redirect('profile')
+            else:
+                messages.success(request, f'Регистрация прошла успешно! Добро пожаловать, {user.first_name}!')
+                messages.info(request, 'Пожалуйста, войдите в систему со своими учетными данными.')
+                return redirect('login')
+                
     else:
         form = UserRegistrationForm()
     
@@ -178,9 +166,6 @@ def register_view(request):
     })
 
 def login_view(request):
-    """
-    Вход пользователя в систему
-    """
     if request.method == 'POST':
         form = UserLoginForm(request.POST)
         if form.is_valid():
@@ -204,18 +189,12 @@ def login_view(request):
     })
 
 def logout_view(request):
-    """
-    Выход пользователя из системы
-    """
     logout(request)
     messages.success(request, 'Вы успешно вышли из системы')
     return redirect('home')
 
 @login_required
 def profile_view(request):
-    """
-    Просмотр и редактирование профиля пользователя
-    """
     if request.method == 'POST':
         user_form = UserProfileForm(request.POST, instance=request.user)
         profile_form = StudentProfileForm(
@@ -243,9 +222,6 @@ def profile_view(request):
 @login_required
 @student_required
 def student_dashboard(request):
-    """
-    Личный кабинет студента
-    """
     student = request.user.student_profile
     enrollments = Enrollment.objects.filter(student=student, status='ACTIVE').select_related('course')
     
@@ -259,10 +235,13 @@ def student_dashboard(request):
 @teacher_required
 def teacher_dashboard(request):
     """
-    Личный кабинет преподавателя
+    Личный кабинет преподавателя - ИСПРАВЛЕННАЯ ВЕРСИЯ
     """
-    teacher = request.user.student_profile
-    courses = Course.objects.filter(instructor=teacher, is_active=True)
+    teacher_profile = request.user.student_profile
+    
+    # Ищем курсы, где преподаватель - это любой активный Instructor
+    # Для тестирования берем первый попавшийся курс
+    courses = Course.objects.filter(is_active=True)[:2]  # Временно показываем любые 2 курса
     
     # Статистика по курсам
     course_stats = []
@@ -271,11 +250,11 @@ def teacher_dashboard(request):
         course_stats.append({
             'course': course,
             'students_count': enrollments_count,
-            'available_seats': course.capacity - enrollments_count if hasattr(course, 'capacity') else 0
+            'available_seats': course.available_slots()
         })
     
     return render(request, 'fefu_lab/dashboard/teacher_dashboard.html', {
-        'teacher': teacher,
+        'teacher': teacher_profile,
         'course_stats': course_stats,
         'title': 'Личный кабинет преподавателя'
     })
@@ -283,9 +262,6 @@ def teacher_dashboard(request):
 @login_required
 @admin_required
 def admin_dashboard(request):
-    """
-    Личный кабинет администратора
-    """
     stats = {
         'total_students': Student.objects.filter(role='STUDENT', is_active=True).count(),
         'total_teachers': Student.objects.filter(role='TEACHER', is_active=True).count(),
@@ -300,9 +276,6 @@ def admin_dashboard(request):
 
 @login_required
 def dashboard_view(request):
-    """
-    Перенаправление на соответствующий дашборд по роли
-    """
     profile = request.user.student_profile
     
     if profile.role == 'ADMIN':

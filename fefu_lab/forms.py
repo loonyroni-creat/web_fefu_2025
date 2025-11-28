@@ -62,7 +62,7 @@ class RegistrationForm(forms.Form):
         username = self.cleaned_data['username']
         if len(username) < 3:
             raise ValidationError("Логин должен содержать минимум 3 символа")
-        if UserProfile.objects.filter(username=username).exists():
+        if User.objects.filter(username=username).exists():  # Исправлено: User вместо UserProfile
             raise ValidationError("Пользователь с таким логином уже существует")
         return username
 
@@ -75,6 +75,8 @@ class RegistrationForm(forms.Form):
             raise ValidationError("Пароли не совпадают")
         
         return cleaned_data
+
+# ДОБАВЛЯЕМ НОВУЮ ФОРМУ
 class UserRegistrationForm(UserCreationForm):
     """
     Форма регистрации пользователя с дополнительными полями
@@ -137,12 +139,23 @@ class UserRegistrationForm(UserCreationForm):
         
         if commit:
             user.save()
-            # Обновляем профиль студента
-            profile = user.student_profile
-            profile.faculty = self.cleaned_data['faculty']
-            profile.phone = self.cleaned_data['phone']
-            profile.bio = self.cleaned_data['bio']
-            profile.save()
+            # Создаем или обновляем профиль студента
+            profile, created = Student.objects.get_or_create(
+                user=user,
+                defaults={
+                    'faculty': self.cleaned_data['faculty'],
+                    'phone': self.cleaned_data['phone'],
+                    'bio': self.cleaned_data['bio'],
+                    'role': 'STUDENT'
+                }
+            )
+            
+            # Если профиль уже существовал, обновляем его
+            if not created:
+                profile.faculty = self.cleaned_data['faculty']
+                profile.phone = self.cleaned_data['phone']
+                profile.bio = self.cleaned_data['bio']
+                profile.save()
         
         return user
 
