@@ -286,4 +286,19 @@ class Enrollment(models.Model):
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
-# Create your models here.
+# Сигнал для автоматического создания профиля при создании пользователя
+@receiver(post_save, sender=User)
+def create_student_profile(sender, instance, created, **kwargs):
+    """
+    Автоматически создает профиль студента при создании нового пользователя
+    """
+    if created:
+        Student.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_student_profile(sender, instance, **kwargs):
+    """
+    Автоматически сохраняет профиль при сохранении пользователя
+    """
+    if hasattr(instance, 'student_profile'):
+        instance.student_profile.save()
