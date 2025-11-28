@@ -1,0 +1,126 @@
+{% extends "fefu_lab/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block heading %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <div class="profile-header">
+        <div class="avatar-section">
+            {% if user.student_profile.avatar %}
+                <img src="{{ user.student_profile.avatar.url }}" alt="Аватар" class="avatar">
+            {% else %}
+                <div class="avatar-placeholder">{{ user.first_name|first }}{{ user.last_name|first }}</div>
+            {% endif %}
+        </div>
+        <div class="profile-info">
+            <h2>{{ user.get_full_name }}</h2>
+            <p class="role-badge {{ user.student_profile.role|lower }}">
+                {{ user.student_profile.get_role_display }}
+            </p>
+            <p>Факультет: {{ user.student_profile.get_faculty_display_name }}</p>
+        </div>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data" class="profile-form">
+        {% csrf_token %}
+        
+        <div class="form-section">
+            <h3>Личная информация</h3>
+            {% for field in user_form %}
+                <div class="form-group">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.errors %}
+                        <div class="error">
+                            {% for error in field.errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        
+        <div class="form-section">
+            <h3>Профиль студента</h3>
+            {% for field in profile_form %}
+                <div class="form-group">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.errors %}
+                        <div class="error">
+                            {% for error in field.errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        
+        <button type="submit" class="btn">Сохранить изменения</button>
+    </form>
+</div>
+
+<style>
+.avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.avatar-placeholder {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #007bff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+}
+.role-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.role-badge.student { background: #28a745; color: white; }
+.role-badge.teacher { background: #ffc107; color: black; }
+.role-badge.admin { background: #dc3545; color: white; }
+.profile-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+.avatar-section {
+    margin-right: 20px;
+}
+.profile-info h2 {
+    margin: 0 0 10px 0;
+}
+.form-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

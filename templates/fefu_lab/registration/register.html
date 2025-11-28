@@ -1,0 +1,63 @@
+{% extends "fefu_lab/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block heading %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <h3>Основная информация</h3>
+        {% for field in form %}
+            {% if field.name in 'username,email,first_name,last_name,password1,password2' %}
+            <div class="form-group">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.errors %}
+                    <div class="error">
+                        {% for error in field.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if field.help_text %}
+                    <small class="help-text">{{ field.help_text }}</small>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% endfor %}
+        
+        <h3>Дополнительная информация</h3>
+        {% for field in form %}
+            {% if field.name in 'faculty,phone,bio' %}
+            <div class="form-group">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.errors %}
+                    <div class="error">
+                        {% for error in field.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% endfor %}
+        
+        <button type="submit" class="btn">Зарегистрироваться</button>
+    </form>
+    
+    <div class="auth-links">
+        <p>Уже есть аккаунт? <a href="{% url 'login' %}">Войдите</a></p>
+    </div>
+</div>
+{% endblock %}
