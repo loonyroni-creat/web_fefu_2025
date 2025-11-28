@@ -127,3 +127,26 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Настройки аутентификации
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/profile/'
+LOGOUT_REDIRECT_URL = '/'
+
+# Настройки сессий
+SESSION_COOKIE_AGE = 1209600  # 2 недели в секундах
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+# Безопасность (False для разработки, True для продакшена)
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
+# Бэкенды аутентификации
+AUTHENTICATION_BACKENDS = [
+    'fefu_lab.backends.EmailBackend',  # Наш кастомный бэкенд
+    'django.contrib.auth.backends.ModelBackend',  # Стандартный бэкенд
+]
+
+# Настройки для загрузки файлов
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
