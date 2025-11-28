@@ -17,6 +17,29 @@
             <a href="/about/">О нас</a> |
             <a href="/feedback/">Обратная связь</a> |
             <a href="/register/">Регистрация</a>
+            {% if user.is_authenticated %}
+            <!-- Дашборд в зависимости от роли -->
+                {% if user.student_profile.role == 'TEACHER' or user.student_profile.role == 'ADMIN' %}
+                    <a href="{% url 'teacher_dashboard' %}">Дашборд</a> |
+                {% else %}
+                    <a href="{% url 'student_dashboard' %}">Дашборд</a> |
+                {% endif %}
+        
+                <!-- Профиль пользователя -->
+                <a href="{% url 'profile' %}">Профиль ({{ user.first_name }})</a> |
+        
+                <!-- Ссылка на админку для staff -->
+                {% if user.is_staff %}
+                    <a href="/admin/">Админка</a> |
+                {% endif %}
+        
+                <!-- Выход -->
+                <a href="{% url 'logout' %}">Выйти</a>
+            {% else %}
+                <!-- Для неавторизованных пользователей -->
+                <a href="{% url 'login' %}">Вход</a> |
+                <a href="{% url 'register' %}">Регистрация</a>
+            {% endif %}
         </nav>
         
         <!-- ЗАГОЛОВОК СТРАНИЦЫ -->
