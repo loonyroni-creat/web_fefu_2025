@@ -1,10 +1,12 @@
-\# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized / DLL files
 __pycache__/
-\*.py\[cod\]
-\*$py.class
-\# C extensions
-\*.so
-\# Distribution / packaging
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
 .Python
 env/
 build/
@@ -19,62 +21,117 @@ parts/
 sdist/
 var/
 wheels/
-\*.egg-info/
+*.egg-info/
 .installed.cfg
-\*.egg
-\*.manifest
-\*.spec
-\# Installer logs
+*.egg
+*.manifest
+*.spec
+
+# Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
-\# Unit test / coverage reports
+
+# Unit test / coverage reports
 htmlcov/
 .tox/
 .coverage
-.coverage.\*
+.coverage.*
 .cache
 nosetests.xml
 coverage.xml
-\*.cover
+*.cover
 .hypothesis/
-\# Translations
-\*.mo
-\*.pot
-\# Django stuff:
-\*.log
+
+# Translations
+*.mo
+*.pot
+
+# ============ DJANGO SPECIFIC ============
+*.log
 local_settings.py
-\# Flask stuff:
-instance/
-.webassets-cache
-\# Scrapy stuff:
-.scrapy
-\# Sphinx documentation
-docs/_build/
-\# PyBuilder
-target/
-\# Jupyter Notebook
-.ipynb_checkpoints
-\# pyenv
-.python-version
-\# celery beat schedule file
-celerybeat-schedule
-\# SageMath parsed files
-\*.sage.py
-\# dotenv
+db.sqlite3
+db.sqlite3-journal
+staticfiles/          # Собранные статические файлы
+media/                # Загруженные медиа файлы
+
+# ============ ENVIRONMENT VARIABLES ============
 .env
-\# virtualenv
+.env.local
+.env.prod
+.env.test
+*.env
+.env.example.local
+
+# ============ VIRTUAL ENVIRONMENT ============
 .venv
 venv/
 ENV/
-.vscode
+venv*/
+env*/
+
+# ============ IDE ============
+.vscode/
+.idea/
+*.swp
+*.swo
 .spyderproject
 .spyproject
 .ropeproject
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# ============ PROJECT SPECIFIC ============
 /site
 .mypy_cache/
 .DS_Store
-\*.sqlite3
-media/
-\*.pyc
-\*.db
-\*.pid
+*.pid
+
+# ============ FEFU LAB SPECIFIC ============
+# SQLite базы данных (оставьте для разработки)
+# *.sqlite3  # Уже есть выше
+
+# Миграции оставляем в git! Они нужны.
+# fefu_lab/migrations/  <-- НЕ добавлять!
+
+# Кэш и временные файлы
+.cache/
+tmp/
+temp/
+
+# Операционные системные файлы
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# PyCharm
+.idea/
+*.iml
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Деплой файлы (оставляем в git!)
+# deploy/  <-- НЕ добавлять!
