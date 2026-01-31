@@ -30,14 +30,15 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# Конфигурация
-REPO_URL="https://github.com/ваш-username/ваш-репозиторий.git"  # Замените на ваш репозиторий
+# ============ КОНФИГУРАЦИЯ ============
+REPO_URL="https://github.com/loonyroni-creat/web_fefu_2025.git"
 PROJECT_DIR="/var/www/fefu_lab"
 VENV_DIR="$PROJECT_DIR/venv"
 DB_NAME="fefu_lab_db"
 DB_USER="fefu_user"
-DB_PASSWORD=$(openssl rand -base64 32)  # Генерация случайного пароля
+DB_PASSWORD=$(openssl rand -base64 32)
 DJANGO_SECRET_KEY=$(openssl rand -base64 64)
+# ======================================
 
 # Шаг 1: Обновление системы
 print_info "Шаг 1: Обновление системы..."
@@ -55,7 +56,6 @@ apt install -y \
     nginx \
     curl \
     git \
-    build-essential \
     libpq-dev
 
 # Шаг 3: Настройка PostgreSQL
@@ -72,18 +72,23 @@ EOF
 
 # Шаг 4: Настройка безопасности PostgreSQL
 print_info "Шаг 4: Настройка безопасности PostgreSQL..."
-PG_HBA_FILE="/etc/postgresql/14/main/pg_hba.conf"
+PG_VERSION=$(psql --version 2>/dev/null | awk '{print $3}' | cut -d'.' -f1)
+if [ -z "$PG_VERSION" ]; then
+    PG_VERSION=14
+fi
+PG_HBA_FILE="/etc/postgresql/$PG_VERSION/main/pg_hba.conf"
+
 if [ -f "$PG_HBA_FILE" ]; then
-    # Резервная копия
     cp "$PG_HBA_FILE" "${PG_HBA_FILE}.bak"
     
-    # Настройка доступа только с localhost
-    sed -i 's/host    all             all             127.0.0.1\/32            scram-sha-256/host    all             all             127.0.0.1\/32            scram-sha-256/g' "$PG_HBA_FILE"
-    sed -i 's/host    all             all             ::1\/128                 scram-sha-256/host    all             all             ::1\/128                 scram-sha-256/g' "$PG_HBA_FILE"
+    sed -i 's/^host\s\+all\s\+all\s\+0\.0\.0\.0\/0.*/# &/' "$PG_HBA_FILE"
+    sed -i 's/^host\s\+all\s\+all\s\+::\/0.*/# &/' "$PG_HBA_FILE"
     
     systemctl restart postgresql
+    print_info "PostgreSQL перезапущен. Доступ только с localhost."
 else
-    print_warning "Файл pg_hba.conf не найден, проверьте версию PostgreSQL"
+    print_warning "Файл pg_hba.conf не найден по пути: $PG_HBA_FILE"
+    print_info "Проверьте установлен ли PostgreSQL: systemctl status postgresql"
 fi
 
 # Шаг 5: Клонирование репозитория
@@ -113,14 +118,19 @@ pip install -r requirements.txt
 
 # Шаг 8: Создание .env файла
 print_info "Шаг 8: Создание .env файла..."
+SERVER_IP=$(hostname -I | awk '{print $1}')
+if [ -z "$SERVER_IP" ]; then
+    SERVER_IP="127.0.0.1"
+fi
+
 cat > "$PROJECT_DIR/.env" <<EOF
 # Django Settings
 DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,$SERVER_IP
 DJANGO_STATIC_ROOT=/var/www/fefu_lab/static
 DJANGO_MEDIA_ROOT=/var/www/fefu_lab/media
-DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost
+DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost,http://$SERVER_IP
 
 # Database Settings
 DB_ENGINE=postgresql
@@ -131,18 +141,18 @@ DB_HOST=localhost
 DB_PORT=5432
 EOF
 
-# Защита .env файла
 chmod 600 "$PROJECT_DIR/.env"
+print_info ".env файл создан с IP: $SERVER_IP"
 
 # Шаг 9: Настройка прав доступа
 print_info "Шаг 9: Настройка прав доступа..."
 chown -R www-data:www-data "$PROJECT_DIR"
 chmod -R 755 "$PROJECT_DIR"
 
-# Создание директорий для статики и медиа
 mkdir -p "$PROJECT_DIR/static"
 mkdir -p "$PROJECT_DIR/media"
 chown -R www-data:www-data "$PROJECT_DIR/static" "$PROJECT_DIR/media"
+print_info "Права доступа настроены"
 
 # Шаг 10: Применение миграций
 print_info "Шаг 10: Применение миграций..."
@@ -152,104 +162,142 @@ python manage.py migrate --noinput
 print_info "Шаг 11: Сбор статических файлов..."
 python manage.py collectstatic --noinput --clear
 
-# Шаг 12: Создание суперпользователя (опционально)
-read -p "Создать суперпользователя Django? (y/n): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    python manage.py createsuperuser
-fi
+# Шаг 12: Создание суперпользователя
+print_info "Шаг 12: Создание суперпользователя Django..."
+echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@fefu.ru', 'admin123') if not User.objects.filter(username='admin').exists() else None" | python manage.py shell
+print_info "Создан суперпользователь: admin / admin123"
 
 # Шаг 13: Настройка Gunicorn
 print_info "Шаг 13: Настройка Gunicorn..."
-# Создание директории для логов
 mkdir -p /var/log/gunicorn
 chown -R www-data:www-data /var/log/gunicorn
 
-# Копирование конфигурационных файлов
+mkdir -p /var/www/fefu_lab/deploy/gunicorn
 cp "$PROJECT_DIR/deploy/gunicorn/config.py" /var/www/fefu_lab/deploy/gunicorn/ || true
 cp "$PROJECT_DIR/deploy/systemd/gunicorn.service" /etc/systemd/system/
 
-# Перезагрузка systemd и запуск сервиса
 systemctl daemon-reload
 systemctl enable gunicorn
 systemctl start gunicorn
+print_info "Сервис Gunicorn запущен"
 
 # Шаг 14: Настройка Nginx
 print_info "Шаг 14: Настройка Nginx..."
-# Копирование конфига
 cp "$PROJECT_DIR/deploy/nginx/fefu_lab.conf" /etc/nginx/sites-available/
 
-# Создание символической ссылки
 ln -sf /etc/nginx/sites-available/fefu_lab.conf /etc/nginx/sites-enabled/
 
-# Удаление дефолтного конфига
 rm -f /etc/nginx/sites-enabled/default
 
-# Проверка конфигурации Nginx
+print_info "Проверка конфигурации Nginx..."
 if nginx -t; then
     systemctl restart nginx
     systemctl enable nginx
+    print_info "Nginx успешно настроен и запущен"
 else
     print_error "Ошибка в конфигурации Nginx"
+    nginx -t
     exit 1
 fi
 
-# Шаг 15: Настройка фаервола (опционально)
+# Шаг 15: Настройка фаервола
 print_info "Шаг 15: Настройка фаервола..."
-# Разрешаем только HTTP (порт 80)
+if ! command -v ufw &> /dev/null; then
+    apt install -y ufw
+fi
+
 ufw allow 80/tcp
-ufw --force enable || true
+echo "y" | ufw enable 2>/dev/null || true
+print_info "Фаервол настроен: открыт порт 80 (HTTP)"
 
 # Шаг 16: Проверка работоспособности
 print_info "Шаг 16: Проверка работоспособности..."
-sleep 5  # Даем время сервисам запуститься
+sleep 5
 
-# Проверка сервисов
-print_info "Проверка статуса сервисов:"
-systemctl status nginx --no-pager
-echo ""
-systemctl status gunicorn --no-pager
-echo ""
-systemctl status postgresql --no-pager
+print_info "=== ПРОВЕРКА СЕРВИСОВ ==="
 
-# Проверка доступности приложения
-print_info "Проверка доступности приложения..."
+echo ""
+print_info "1. Статус Nginx:"
+systemctl status nginx --no-pager | head -10
+
+echo ""
+print_info "2. Статус Gunicorn:"
+systemctl status gunicorn --no-pager | head -10
+
+echo ""
+print_info "3. Статус PostgreSQL:"
+systemctl status postgresql --no-pager | head -10
+
+echo ""
+print_info "4. Проверка открытых портов:"
+netstat -tulpn | grep -E ':(80|5432|8000)' || true
+
+echo ""
+print_info "5. Проверка доступности приложения..."
 if curl -f http://localhost > /dev/null 2>&1; then
-    print_info "Приложение успешно запущено и доступно по http://localhost"
-    print_info "Доступно также по вашему IP адресу в сети"
+    print_info "ПРИЛОЖЕНИЕ ДОСТУПНО: http://localhost"
+    print_info "ВНЕШНИЙ ДОСТУП: http://$SERVER_IP"
 else
-    print_error "Приложение недоступно. Проверьте логи."
+    print_error "Приложение недоступно. Проверьте логи..."
+    echo ""
+    print_info "Последние логи Gunicorn:"
     journalctl -u gunicorn --no-pager -n 20
+    echo ""
+    print_info "Последние логи Nginx:"
     journalctl -u nginx --no-pager -n 20
 fi
 
-# Шаг 17: Информация о деплое
+# Шаг 17: Итоговая информация
 print_info "========================================"
 print_info "ДЕПЛОЙ УСПЕШНО ЗАВЕРШЕН!"
 print_info "========================================"
-print_info "Данные для доступа:"
-print_info "Приложение: http://ваш-ip-адрес"
-print_info "База данных: PostgreSQL"
-print_info "  Имя БД: $DB_NAME"
-print_info "  Пользователь: $DB_USER"
-print_info "  Пароль: $DB_PASSWORD"
-print_info "Статические файлы: $PROJECT_DIR/static"
-print_info "Медиа файлы: $PROJECT_DIR/media"
+print_info "ДАННЫЕ ДЛЯ ДОСТУПА:"
+print_info "Приложение: http://$SERVER_IP"
+print_info "Админка: http://$SERVER_IP/admin"
+print_info "Логин: admin"
+print_info "Пароль: admin123"
+print_info ""
+print_info "БАЗА ДАННЫХ:"
+print_info "Имя БД: $DB_NAME"
+print_info "Пользователь: $DB_USER"
+print_info "Пароль: $DB_PASSWORD"
+print_info ""
+print_info "ПУТИ К ФАЙЛАМ:"
+print_info "Проект: $PROJECT_DIR"
+print_info "Статика: $PROJECT_DIR/static"
+print_info "Медиа: $PROJECT_DIR/media"
 print_info "Логи Gunicorn: /var/log/gunicorn/"
 print_info "Логи Nginx: /var/log/nginx/"
 print_info "========================================"
 
-# Сохранение паролей в файл (для безопасности храните отдельно)
 cat > /root/fefu_lab_credentials.txt <<EOF
-FEFU Lab Deployment Credentials
+FEFU Lab - Данные для доступа
 ================================
-Application URL: http://ваш-ip-адрес
-Database:
-  Name: $DB_NAME
-  User: $DB_USER
-  Password: $DB_PASSWORD
-PostgreSQL Connection: psql -h localhost -U $DB_USER -d $DB_NAME
+Время развертывания: $(date)
+IP сервера: $SERVER_IP
+
+ВЕБ-ПРИЛОЖЕНИЕ:
+URL: http://$SERVER_IP
+Админка: http://$SERVER_IP/admin
+Логин: admin
+Пароль: admin123
+
+БАЗА ДАННЫХ PostgreSQL:
+Имя БД: $DB_NAME
+Пользователь: $DB_USER
+Пароль: $DB_PASSWORD
+Подключение: psql -h localhost -U $DB_USER -d $DB_NAME
+================================
 EOF
 
 chmod 600 /root/fefu_lab_credentials.txt
-print_info "Данные для доступа сохранены в /root/fefu_lab_credentials.txt"
+print_info "Все данные сохранены в /root/fefu_lab_credentials.txt"
+
+print_info ""
+print_info "ДЛЯ ОТЧЕТА:"
+print_info "1. Скриншот работающего приложения: http://$SERVER_IP"
+print_info "2. Скриншот команды: sudo netstat -tulpn"
+print_info "3. Скриншот команды с хоста: nmap -p 80,5432,8000 $SERVER_IP"
+print_info "4. Скриншот админки: http://$SERVER_IP/admin"
+print_info ""
+print_info "Деплой завершен!"
