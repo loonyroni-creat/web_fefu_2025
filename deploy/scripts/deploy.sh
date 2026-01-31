@@ -1,17 +1,17 @@
 #!/bin/bash
 
-# Скрипт деплоя для FEFU Lab
-# Автоматизация развертывания Django приложения на Ubuntu
+# Deployment script for FEFU Lab
+# Django application deployment automation on Ubuntu
 
-set -e  # Выход при ошибке
+set -e  # Exit on error
 
-# Цвета для вывода
+# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Функции для вывода
+# Output functions
 print_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
@@ -24,13 +24,13 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Проверка прав
+# Check permissions
 if [[ $EUID -ne 0 ]]; then
-    print_error "Этот скрипт должен запускаться с правами root"
+    print_error "This script must be run as root"
     exit 1
 fi
 
-# ============ КОНФИГУРАЦИЯ ============
+# Configuration
 REPO_URL="https://github.com/loonyroni-creat/web_fefu_2025.git"
 PROJECT_DIR="/var/www/fefu_lab"
 VENV_DIR="$PROJECT_DIR/venv"
@@ -38,15 +38,20 @@ DB_NAME="fefu_lab_db"
 DB_USER="fefu_user"
 DB_PASSWORD=$(openssl rand -base64 32)
 DJANGO_SECRET_KEY=$(openssl rand -base64 64)
-# ======================================
 
-# Шаг 1: Обновление системы
-print_info "Шаг 1: Обновление системы..."
+# Get server IP
+SERVER_IP=$(hostname -I | awk '{print $1}')
+if [ -z "$SERVER_IP" ]; then
+    SERVER_IP="127.0.0.1"
+fi
+
+# Step 1: System update
+print_info "Step 1: Updating system..."
 apt update
 apt upgrade -y
 
-# Шаг 2: Установка необходимых пакетов
-print_info "Шаг 2: Установка необходимых пакетов..."
+# Step 2: Install required packages
+print_info "Step 2: Installing required packages..."
 apt install -y \
     python3 \
     python3-pip \
@@ -58,8 +63,8 @@ apt install -y \
     git \
     libpq-dev
 
-# Шаг 3: Настройка PostgreSQL
-print_info "Шаг 3: Настройка PostgreSQL..."
+# Step 3: PostgreSQL setup
+print_info "Step 3: Configuring PostgreSQL..."
 sudo -u postgres psql <<EOF
 CREATE DATABASE $DB_NAME;
 CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';
@@ -70,8 +75,8 @@ GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
 \q
 EOF
 
-# Шаг 4: Настройка безопасности PostgreSQL
-print_info "Шаг 4: Настройка безопасности PostgreSQL..."
+# Step 4: PostgreSQL security
+print_info "Step 4: Configuring PostgreSQL security..."
 PG_VERSION=$(psql --version 2>/dev/null | awk '{print $3}' | cut -d'.' -f1)
 if [ -z "$PG_VERSION" ]; then
     PG_VERSION=14
@@ -85,16 +90,16 @@ if [ -f "$PG_HBA_FILE" ]; then
     sed -i 's/^host\s\+all\s\+all\s\+::\/0.*/# &/' "$PG_HBA_FILE"
     
     systemctl restart postgresql
-    print_info "PostgreSQL перезапущен. Доступ только с localhost."
+    print_info "PostgreSQL restarted. Access only from localhost."
 else
-    print_warning "Файл pg_hba.conf не найден по пути: $PG_HBA_FILE"
-    print_info "Проверьте установлен ли PostgreSQL: systemctl status postgresql"
+    print_warning "pg_hba.conf not found at: $PG_HBA_FILE"
+    print_info "Check if PostgreSQL is installed: systemctl status postgresql"
 fi
 
-# Шаг 5: Клонирование репозитория
-print_info "Шаг 5: Клонирование репозитория..."
+# Step 5: Clone repository
+print_info "Step 5: Cloning repository..."
 if [ -d "$PROJECT_DIR" ]; then
-    print_warning "Директория $PROJECT_DIR уже существует, выполняем обновление..."
+    print_warning "Directory $PROJECT_DIR already exists, updating..."
     cd "$PROJECT_DIR"
     git pull origin main
 else
@@ -102,27 +107,22 @@ else
     cd "$PROJECT_DIR"
 fi
 
-# Шаг 6: Создание виртуального окружения
-print_info "Шаг 6: Создание виртуального окружения..."
+# Step 6: Create virtual environment
+print_info "Step 6: Creating virtual environment..."
 if [ ! -d "$VENV_DIR" ]; then
     python3 -m venv "$VENV_DIR"
 fi
 
-# Активация виртуального окружения
+# Activate virtual environment
 source "$VENV_DIR/bin/activate"
 
-# Шаг 7: Установка зависимостей Python
-print_info "Шаг 7: Установка зависимостей Python..."
+# Step 7: Install Python dependencies
+print_info "Step 7: Installing Python dependencies..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Шаг 8: Создание .env файла
-print_info "Шаг 8: Создание .env файла..."
-SERVER_IP=$(hostname -I | awk '{print $1}')
-if [ -z "$SERVER_IP" ]; then
-    SERVER_IP="127.0.0.1"
-fi
-
+# Step 8: Create .env file
+print_info "Step 8: Creating .env file..."
 cat > "$PROJECT_DIR/.env" <<EOF
 # Django Settings
 DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY
@@ -142,33 +142,33 @@ DB_PORT=5432
 EOF
 
 chmod 600 "$PROJECT_DIR/.env"
-print_info ".env файл создан с IP: $SERVER_IP"
+print_info ".env file created with IP: $SERVER_IP"
 
-# Шаг 9: Настройка прав доступа
-print_info "Шаг 9: Настройка прав доступа..."
+# Step 9: Set permissions
+print_info "Step 9: Setting permissions..."
 chown -R www-data:www-data "$PROJECT_DIR"
 chmod -R 755 "$PROJECT_DIR"
 
 mkdir -p "$PROJECT_DIR/static"
 mkdir -p "$PROJECT_DIR/media"
 chown -R www-data:www-data "$PROJECT_DIR/static" "$PROJECT_DIR/media"
-print_info "Права доступа настроены"
+print_info "Permissions configured"
 
-# Шаг 10: Применение миграций
-print_info "Шаг 10: Применение миграций..."
+# Step 10: Apply migrations
+print_info "Step 10: Applying migrations..."
 python manage.py migrate --noinput
 
-# Шаг 11: Сбор статических файлов
-print_info "Шаг 11: Сбор статических файлов..."
+# Step 11: Collect static files
+print_info "Step 11: Collecting static files..."
 python manage.py collectstatic --noinput --clear
 
-# Шаг 12: Создание суперпользователя
-print_info "Шаг 12: Создание суперпользователя Django..."
+# Step 12: Create superuser
+print_info "Step 12: Creating Django superuser..."
 echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@fefu.ru', 'admin123') if not User.objects.filter(username='admin').exists() else None" | python manage.py shell
-print_info "Создан суперпользователь: admin / admin123"
+print_info "Superuser created: admin / admin123"
 
-# Шаг 13: Настройка Gunicorn
-print_info "Шаг 13: Настройка Gunicorn..."
+# Step 13: Configure Gunicorn
+print_info "Step 13: Configuring Gunicorn..."
 mkdir -p /var/log/gunicorn
 chown -R www-data:www-data /var/log/gunicorn
 
@@ -179,125 +179,125 @@ cp "$PROJECT_DIR/deploy/systemd/gunicorn.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable gunicorn
 systemctl start gunicorn
-print_info "Сервис Gunicorn запущен"
+print_info "Gunicorn service started"
 
-# Шаг 14: Настройка Nginx
-print_info "Шаг 14: Настройка Nginx..."
+# Step 14: Configure Nginx
+print_info "Step 14: Configuring Nginx..."
 cp "$PROJECT_DIR/deploy/nginx/fefu_lab.conf" /etc/nginx/sites-available/
 
 ln -sf /etc/nginx/sites-available/fefu_lab.conf /etc/nginx/sites-enabled/
 
 rm -f /etc/nginx/sites-enabled/default
 
-print_info "Проверка конфигурации Nginx..."
+print_info "Checking Nginx configuration..."
 if nginx -t; then
     systemctl restart nginx
     systemctl enable nginx
-    print_info "Nginx успешно настроен и запущен"
+    print_info "Nginx successfully configured and started"
 else
-    print_error "Ошибка в конфигурации Nginx"
+    print_error "Nginx configuration error"
     nginx -t
     exit 1
 fi
 
-# Шаг 15: Настройка фаервола
-print_info "Шаг 15: Настройка фаервола..."
+# Step 15: Configure firewall
+print_info "Step 15: Configuring firewall..."
 if ! command -v ufw &> /dev/null; then
     apt install -y ufw
 fi
 
 ufw allow 80/tcp
 echo "y" | ufw enable 2>/dev/null || true
-print_info "Фаервол настроен: открыт порт 80 (HTTP)"
+print_info "Firewall configured: port 80 (HTTP) open"
 
-# Шаг 16: Проверка работоспособности
-print_info "Шаг 16: Проверка работоспособности..."
+# Step 16: Verify functionality
+print_info "Step 16: Verifying functionality..."
 sleep 5
 
-print_info "=== ПРОВЕРКА СЕРВИСОВ ==="
+print_info "=== SERVICE CHECK ==="
 
 echo ""
-print_info "1. Статус Nginx:"
+print_info "1. Nginx status:"
 systemctl status nginx --no-pager | head -10
 
 echo ""
-print_info "2. Статус Gunicorn:"
+print_info "2. Gunicorn status:"
 systemctl status gunicorn --no-pager | head -10
 
 echo ""
-print_info "3. Статус PostgreSQL:"
+print_info "3. PostgreSQL status:"
 systemctl status postgresql --no-pager | head -10
 
 echo ""
-print_info "4. Проверка открытых портов:"
+print_info "4. Open ports check:"
 netstat -tulpn | grep -E ':(80|5432|8000)' || true
 
 echo ""
-print_info "5. Проверка доступности приложения..."
+print_info "5. Application availability check..."
 if curl -f http://localhost > /dev/null 2>&1; then
-    print_info "ПРИЛОЖЕНИЕ ДОСТУПНО: http://localhost"
-    print_info "ВНЕШНИЙ ДОСТУП: http://$SERVER_IP"
+    print_info "APPLICATION AVAILABLE: http://localhost"
+    print_info "EXTERNAL ACCESS: http://$SERVER_IP"
 else
-    print_error "Приложение недоступно. Проверьте логи..."
+    print_error "Application not available. Checking logs..."
     echo ""
-    print_info "Последние логи Gunicorn:"
+    print_info "Recent Gunicorn logs:"
     journalctl -u gunicorn --no-pager -n 20
     echo ""
-    print_info "Последние логи Nginx:"
+    print_info "Recent Nginx logs:"
     journalctl -u nginx --no-pager -n 20
 fi
 
-# Шаг 17: Итоговая информация
+# Step 17: Deployment summary
 print_info "========================================"
-print_info "ДЕПЛОЙ УСПЕШНО ЗАВЕРШЕН!"
+print_info "DEPLOYMENT SUCCESSFULLY COMPLETED!"
 print_info "========================================"
-print_info "ДАННЫЕ ДЛЯ ДОСТУПА:"
-print_info "Приложение: http://$SERVER_IP"
-print_info "Админка: http://$SERVER_IP/admin"
-print_info "Логин: admin"
-print_info "Пароль: admin123"
+print_info "ACCESS DETAILS:"
+print_info "Application: http://$SERVER_IP"
+print_info "Admin panel: http://$SERVER_IP/admin"
+print_info "Login: admin"
+print_info "Password: admin123"
 print_info ""
-print_info "БАЗА ДАННЫХ:"
-print_info "Имя БД: $DB_NAME"
-print_info "Пользователь: $DB_USER"
-print_info "Пароль: $DB_PASSWORD"
+print_info "DATABASE:"
+print_info "DB Name: $DB_NAME"
+print_info "DB User: $DB_USER"
+print_info "DB Password: $DB_PASSWORD"
 print_info ""
-print_info "ПУТИ К ФАЙЛАМ:"
-print_info "Проект: $PROJECT_DIR"
-print_info "Статика: $PROJECT_DIR/static"
-print_info "Медиа: $PROJECT_DIR/media"
-print_info "Логи Gunicorn: /var/log/gunicorn/"
-print_info "Логи Nginx: /var/log/nginx/"
+print_info "FILE PATHS:"
+print_info "Project: $PROJECT_DIR"
+print_info "Static files: $PROJECT_DIR/static"
+print_info "Media files: $PROJECT_DIR/media"
+print_info "Gunicorn logs: /var/log/gunicorn/"
+print_info "Nginx logs: /var/log/nginx/"
 print_info "========================================"
 
 cat > /root/fefu_lab_credentials.txt <<EOF
-FEFU Lab - Данные для доступа
+FEFU Lab - Access Credentials
 ================================
-Время развертывания: $(date)
-IP сервера: $SERVER_IP
+Deployment time: $(date)
+Server IP: $SERVER_IP
 
-ВЕБ-ПРИЛОЖЕНИЕ:
+WEB APPLICATION:
 URL: http://$SERVER_IP
-Админка: http://$SERVER_IP/admin
-Логин: admin
-Пароль: admin123
+Admin: http://$SERVER_IP/admin
+Login: admin
+Password: admin123
 
-БАЗА ДАННЫХ PostgreSQL:
-Имя БД: $DB_NAME
-Пользователь: $DB_USER
-Пароль: $DB_PASSWORD
-Подключение: psql -h localhost -U $DB_USER -d $DB_NAME
+PostgreSQL DATABASE:
+DB Name: $DB_NAME
+DB User: $DB_USER
+DB Password: $DB_PASSWORD
+Connection: psql -h localhost -U $DB_USER -d $DB_NAME
 ================================
 EOF
 
 chmod 600 /root/fefu_lab_credentials.txt
-print_info "Все данные сохранены в /root/fefu_lab_credentials.txt"
+print_info "All credentials saved to /root/fefu_lab_credentials.txt"
 
 print_info ""
-print_info "ДЛЯ ОТЧЕТА:"
-print_info "1. Скриншот работающего приложения: http://$SERVER_IP"
-print_info "2. Скриншот команды: sudo netstat -tulpn"
-print_info "3. Скриншот команды с хоста: nmap -p 80,5432,8000 $SERVER_IP"
-print_info "4. Скриншот админки: http://$SERVER_IP/admin"
+print_info "FOR REPORT:"
+print_info "1. Screenshot of working application: http://$SERVER_IP"
+print_info "2. Screenshot of command: sudo netstat -tulpn"
+print_info "3. Screenshot from host: nmap -p 80,5432,8000 $SERVER_IP"
+print_info "4. Screenshot of admin panel: http://$SERVER_IP/admin"
 print_info ""
-print_info "Деплой завершен!"
+print_info "Deployment completed!"
