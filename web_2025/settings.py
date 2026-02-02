@@ -1,52 +1,19 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
-
-load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# =========================
-# SECURITY
-# =========================
-
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-change-me"
-)
-
-DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
-
-ALLOWED_HOSTS = os.getenv(
-    "DJANGO_ALLOWED_HOSTS",
-    "localhost,127.0.0.1"
-).split(",")
-
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    "DJANGO_CSRF_TRUSTED_ORIGINS",
-    "http://localhost"
-).split(",")
-
-
-# =========================
-# APPS
-# =========================
+SECRET_KEY = 'django-insecure-change-this-for-production!123'
+DEBUG = False
+ALLOWED_HOSTS = ['192.168.224.141', 'localhost', '127.0.0.1']
+CSRF_TRUSTED_ORIGINS = ['http://192.168.224.141']
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    'django.contrib.admin', 'django.contrib.auth',
+    'django.contrib.contenttypes', 'django.contrib.sessions',
+    'django.contrib.messages', 'django.contrib.staticfiles',
     'fefu_lab',
 ]
-
-
-# =========================
-# MIDDLEWARE
-# =========================
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -58,97 +25,50 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-
 ROOT_URLCONF = 'web_2025.urls'
 
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
+TEMPLATES = [{
+    'BACKEND': 'django.template.backends.django.DjangoTemplates',
+    'DIRS': [BASE_DIR / 'templates'],
+    'APP_DIRS': True,
+    'OPTIONS': {
+        'context_processors': [
+            'django.template.context_processors.debug',
+            'django.template.context_processors.request',
+            'django.contrib.auth.context_processors.auth',
+            'django.contrib.messages.context_processors.messages',
+        ],
     },
-]
+}]
 
 WSGI_APPLICATION = 'web_2025.wsgi.application'
 
-
-# =========================
-# DATABASE
-# =========================
-
-if os.getenv("fefu_lab_db"):
-    # PostgreSQL (production)
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("fefu_lab_db"),
-            "USER": os.getenv("fefu_user"),
-            "PASSWORD": os.getenv("strongpassword"),
-            "HOST": os.getenv("localhost"),
-            "PORT": os.getenv("5432"),
-        }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'fefu_lab_db',
+        'USER': 'fefu_user',
+        'PASSWORD': 'strongpassword',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
-else:
-    # SQLite (dev fallback)
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+}
 
-
-# =========================
-# STATIC & MEDIA
-# =========================
-
-STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
-
-# =========================
-# AUTH
-# =========================
-
-LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/profile/"
-LOGOUT_REDIRECT_URL = "/"
-
-
-# =========================
-# SESSION SECURITY
-# =========================
-
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
-
-
-# =========================
-# EXTRA SECURITY (nice-to-have)
-# =========================
-
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-
-
-# =========================
-# DEFAULTS
-# =========================
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
+
+STATIC_URL = '/static/'
+STATIC_ROOT = '/var/www/fefu_lab/staticfiles'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = '/var/www/fefu_lab/media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -1,24 +1,16 @@
 [Unit]
-Description=Gunicorn Django Service (FEFU Lab)
+Description=FEFU Lab Gunicorn
 After=network.target postgresql.service
 
 [Service]
 User=www-data
 Group=www-data
-
 WorkingDirectory=/var/www/fefu_lab
-
-EnvironmentFile=/var/www/fefu_lab/.env
 Environment="PATH=/var/www/fefu_lab/venv/bin"
-
 ExecStart=/var/www/fefu_lab/venv/bin/gunicorn \
-    --config /var/www/fefu_lab/deploy/gunicorn/config.py \
+    --workers 3 \
+    --bind unix:/run/gunicorn/fefu_lab.sock \
     web_2025.wsgi:application
-
-Restart=always
-RestartSec=3
-
-PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
