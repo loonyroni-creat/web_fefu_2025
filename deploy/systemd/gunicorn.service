@@ -6,11 +6,17 @@ After=network.target postgresql.service
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/fefu_lab
+
+EnvironmentFile=/var/www/fefu_lab/.env
 Environment="PATH=/var/www/fefu_lab/venv/bin"
+
 ExecStart=/var/www/fefu_lab/venv/bin/gunicorn \
     --workers 3 \
+    --umask 007 \
     --bind unix:/run/gunicorn/fefu_lab.sock \
     web_2025.wsgi:application
+
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
