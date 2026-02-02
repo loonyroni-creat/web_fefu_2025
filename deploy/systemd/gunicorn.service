@@ -1,41 +1,24 @@
 [Unit]
-Description=FEFU Lab Gunicorn Service
+Description=Gunicorn Django Service (FEFU Lab)
 After=network.target postgresql.service
-Requires=postgresql.service
 
 [Service]
-Type=simple
 User=www-data
 Group=www-data
+
 WorkingDirectory=/var/www/fefu_lab
 
-# Environment variables
-Environment="PATH=/var/www/fefu_lab/venv/bin"
-Environment="DJANGO_SETTINGS_MODULE=web_2025.settings"
 EnvironmentFile=/var/www/fefu_lab/.env
+Environment="PATH=/var/www/fefu_lab/venv/bin"
 
 ExecStart=/var/www/fefu_lab/venv/bin/gunicorn \
     --config /var/www/fefu_lab/deploy/gunicorn/config.py \
     web_2025.wsgi:application
 
-ExecReload=/bin/kill -s HUP $MAINPID
-ExecStop=/bin/kill -s TERM $MAINPID
+Restart=always
+RestartSec=3
+
 PrivateTmp=true
-
-# Security
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/var/www/fefu_lab/media /var/www/fefu_lab/staticfiles /var/log/gunicorn
-
-# Logging
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=fefu-lab-gunicorn
-
-# Restart policy
-Restart=on-failure
-RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
