@@ -1,0 +1,88 @@
+version: "3.9"
+
+services:
+
+  # =========================
+  # POSTGRES
+  # =========================
+  db:
+    image: postgres:15-alpine
+    container_name: fefu_db
+
+    env_file:
+      - .env
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+    restart: unless-stopped
+
+
+
+  # =========================
+  # DJANGO + GUNICORN
+  # =========================
+  web:
+    build:
+      context: ./django
+      dockerfile: Dockerfile
+
+    container_name: fefu_web
+
+    command: >
+      gunicorn config.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers 3
+
+    env_file:
+      - .env
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    volumes:
+      - static_volume:/app/static
+      - media_volume:/app/media
+
+    expose:
+      - 8000
+
+    restart: unless-stopped
+
+
+
+  # =========================
+  # NGINX
+  # =========================
+  nginx:
+    build: ./nginx
+    container_name: fefu_nginx
+
+    ports:
+      - "80:80"
+
+    depends_on:
+      - web
+
+    volumes:
+      - static_volume:/app/static
+      - media_volume:/app/media
+
+    restart: unless-stopped
+
+
+
+# =========================
+# VOLUMES
+# =========================
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
